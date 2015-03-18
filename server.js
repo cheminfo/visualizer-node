@@ -1,7 +1,8 @@
 "use strict";
 
 var debug = require('debug')('main'),
-    appconfig = require('./appconfig.json'),
+    path  = require('path'),
+    config = require('./appconfig.json'),
     network = require('./util/network'),
     Promise = require('bluebird'),
     express = require('express'),
@@ -10,23 +11,24 @@ var debug = require('debug')('main'),
     bodyParser = require('body-parser');
 
 
+
 // The static directory is where all the statically served files go
 // Like jpg, js, css etc...
-app.use(express.static(__dirname + '/static'));
+app.use(express.static(path.join(__dirname ,config.staticDir)));
 
 app.use(bodyParser.json({
-    limit: '5mb'
+    limit: config.fileLimit
 }));
 app.use(bodyParser.urlencoded({
-    limit: '5mb',
+    limit: config.fileLimit,
     extended: true
 }));
 
-var ipaddress = appconfig.ipaddress || '';
+var ipaddress = config.ipaddress || '';
 var ipValid = network.validateIp(ipaddress);
-app.set("port", appconfig.port || 80);
-app.set("ipaddr", ipValid ? appconfig.ipaddress : ''); // by default we listen to all the ips
-app.set("serveraddress", ipValid ? appconfig.ipaddress : network.getMyIp() || '127.0.0.1');
+app.set("port", config.port || 80);
+app.set("ipaddr", ipValid ? config.ipaddress : ''); // by default we listen to all the ips
+app.set("serveraddress", ipValid ? config.ipaddress : network.getMyIp() || '127.0.0.1');
 
 
 app.use(function(req, res, next) {
@@ -39,10 +41,8 @@ app.use(function(req, res, next) {
 var modules = ['navview'];
 debug('Mounting modules', modules);
 
-for(var i=0; i<modules.length; i++) {
-    var router = require('./routes/'+modules[i]);
-    app.use('/'+modules[i], router);
-}
+var router = require('./routes/navview')(path.join(config.staticDir, config.viewsDir));
+app.use('/navview', router);
 
 app.get('/', function(req,res) {
     res.set('Cache-Control', 'no-cache');
